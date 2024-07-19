@@ -1,0 +1,4 @@
+github.com/google/capslock v0.2.4 h1:+BK+8ouq+lbcJv30PLRWaaF21JRQp8Gm5IH2+guIUDI=
+github.com/google/capslock v0.2.4/go.mod h1:+JQKIM4NJok0ygUyY2dgCMChKX6g7VkmrqvUV/kKNxQ=
+google.golang.org/protobuf v1.34.2 h1:6xV6lTsCfpGD21XK49h7MhtcApnLqkfYgPcdHftf6hg=
+google.golang.org/protobuf v1.34.2/go.mod h1:qYOHts0dSfpeUzUFpOMr/WGzszTmLH+DiWniOlNbLDw=

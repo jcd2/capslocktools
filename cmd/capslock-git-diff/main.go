@@ -36,7 +36,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var verbose = flag.Bool("v", false, "enable verbose logging")
+var (
+	verbose     = flag.Bool("v", false, "enable verbose logging")
+	granularity = flag.String("granularity", "", "the granularity to use for comparisons")
+)
 
 func vlog(format string, a ...any) {
 	if !*verbose {
@@ -104,7 +107,7 @@ func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err er
 		return nil, fmt.Errorf("switching to temporary directory: %w", err)
 	}
 	// Call capslock.
-	if err = run(&b, "capslock", "-packages="+pkgname, "-output=json"); err != nil {
+	if err = run(&b, "capslock", "-packages="+pkgname, "-output=json", "-granularity="+*granularity); err != nil {
 		return nil, err
 	}
 	if *verbose {

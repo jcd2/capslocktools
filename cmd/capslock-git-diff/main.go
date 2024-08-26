@@ -58,7 +58,9 @@ func run(w io.Writer, command string, args ...string) error {
 	vlog("running %q with args %q", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = w
-	cmd.Stderr = os.Stderr
+	if *verbose {
+		cmd.Stderr = os.Stderr
+	}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running %q with args %q: %w", command, args, err)
 	}
@@ -66,6 +68,7 @@ func run(w io.Writer, command string, args ...string) error {
 }
 
 func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) {
+	vlog("analyzing at revision %q", rev)
 	if rev == "." {
 		return callCapslock(rev, pkgname)
 	}
@@ -80,12 +83,14 @@ func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err er
 		return nil, err
 	}
 	gitdir := strings.TrimSuffix(b.String(), "\n")
+	vlog("git directory: %q", gitdir)
 	b.Reset()
 	// Get the relative directory within the git repository.
 	if err = run(&b, "git", "rev-parse", "--show-prefix"); err != nil {
 		return nil, err
 	}
 	prefix := strings.TrimSuffix(b.String(), "\n")
+	vlog("current path in repository: %q", prefix)
 	b.Reset()
 	// Clone the repo.
 	if err = run(nil, "git", "clone", "--shared", "--no-checkout", "--", gitdir, tmpdir); err != nil {
@@ -102,18 +107,22 @@ func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err er
 		if err == nil && err1 != nil {
 			err = fmt.Errorf("returning to working directory: %w", err1)
 		}
+		vlog("returned to working directory %q", wd)
 	}()
 	if err = os.Chdir(tmpdir); err != nil {
 		return nil, fmt.Errorf("switching to temporary directory: %w", err)
 	}
+	vlog("switched to directory %q", tmpdir)
 	// Reset to the requested revision.
 	if err = run(nil, "git", "reset", "--hard", rev); err != nil {
 		return nil, err
 	}
 	// Go to the same directory in the clone.
-	if err = os.Chdir(filepath.Join(tmpdir, prefix)); err != nil {
+	path := filepath.Join(tmpdir, prefix)
+	if err = os.Chdir(path); err != nil {
 		return nil, fmt.Errorf("switching to temporary directory: %w", err)
 	}
+	vlog("switched to directory %q", path)
 	return callCapslock(rev, pkgname)
 }
 
@@ -124,13 +133,18 @@ func callCapslock(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) 
 		return nil, err
 	}
 	if *verbose {
-		vlog("At revision %q: %s", rev, string(b.Bytes()))
+		str := string(b.Bytes())
+		if len(str) > 103 {
+			str = str[:100] + "..."
+		}
+		vlog("capslock returned %q", str)
 	}
 	// Unmarshal the output.
 	cil = new(cpb.CapabilityInfoList)
 	if err = protojson.Unmarshal(b.Bytes(), cil); err != nil {
 		return nil, fmt.Errorf("Couldn't parse analyzer output: %w", err)
 	}
+	vlog("parsed CapabilityInfoList with %d entries", len(cil.CapabilityInfo))
 	return cil, nil
 }
 

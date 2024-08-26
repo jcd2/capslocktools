@@ -42,8 +42,9 @@ import (
 )
 
 var (
-	verbose     = flag.Bool("v", false, "enable verbose logging")
-	granularity = flag.String("granularity", "", "the granularity to use for comparisons")
+	verbose          = flag.Bool("v", false, "enable verbose logging")
+	granularity      = flag.String("granularity", "", "the granularity to use for comparisons")
+	flagCapabilities = flag.String("capabilities", "", "if non-empty, a comma-separated list of capabilities to pass to capslock")
 )
 
 func vlog(format string, a ...any) {
@@ -129,7 +130,15 @@ func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err er
 func callCapslock(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) {
 	// Call capslock.
 	var b bytes.Buffer
-	if err = run(&b, "capslock", "-packages="+pkgname, "-output=json", "-granularity="+*granularity); err != nil {
+	args := []string{
+		"-packages=" + pkgname,
+		"-output=json",
+		"-granularity=" + *granularity,
+	}
+	if *flagCapabilities != "" {
+		args = append(args, "-capabilities="+*flagCapabilities)
+	}
+	if err = run(&b, "capslock", args...); err != nil {
 		return nil, err
 	}
 	if *verbose {

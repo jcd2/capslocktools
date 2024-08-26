@@ -14,6 +14,11 @@
 //
 //	go install github.com/google/capslock/cmd/capslock@latest
 //
+// To compare against the current state of the repository, specify "." as a
+// revision:
+//
+//	capslock-git-diff main . somepath/...
+//
 // If the environment variable CAPSLOCKTOOLSTMPDIR is set and non-empty, it
 // specifies the directory where temporary files are created.  Otherwise the
 // system temporary directory is used.
@@ -61,6 +66,9 @@ func run(w io.Writer, command string, args ...string) error {
 }
 
 func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) {
+	if rev == "." {
+		return callCapslock(rev, pkgname)
+	}
 	// Make a temporary directory.
 	tmpdir, err := os.MkdirTemp(os.Getenv("CAPSLOCKTOOLSTMPDIR"), "")
 	if err != nil {
@@ -106,7 +114,12 @@ func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err er
 	if err = os.Chdir(filepath.Join(tmpdir, prefix)); err != nil {
 		return nil, fmt.Errorf("switching to temporary directory: %w", err)
 	}
+	return callCapslock(rev, pkgname)
+}
+
+func callCapslock(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) {
 	// Call capslock.
+	var b bytes.Buffer
 	if err = run(&b, "capslock", "-packages="+pkgname, "-output=json", "-granularity="+*granularity); err != nil {
 		return nil, err
 	}

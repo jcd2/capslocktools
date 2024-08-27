@@ -19,6 +19,9 @@
 //
 //	capslock-git-diff main . somepath/...
 //
+// If only two arguments are supplied, all packages under the current directory
+// are used.
+//
 // If the environment variable CAPSLOCKTOOLSTMPDIR is set and non-empty, it
 // specifies the directory where temporary files are created.  Otherwise the
 // system temporary directory is used.
@@ -160,15 +163,22 @@ func callCapslock(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) 
 func main() {
 	flag.Parse()
 	a := flag.Args()
-	if len(a) != 3 {
+	var pkgname string
+	if len(a) == 2 {
+		// By default, use the current directory and its subdirectories.
+		pkgname = "./..."
+	} else if len(a) == 3 {
+		pkgname = a[2]
+	} else {
 		panic(fmt.Sprintf("wrong number of arguments: %q", a))
 	}
-	cil1, err := AnalyzeAtRevision(a[0], a[2])
+	revisions := [2]string{a[0], a[1]}
+	cil1, err := AnalyzeAtRevision(revisions[0], pkgname)
 	if err != nil {
 		log.Print(err)
 		os.Exit(2)
 	}
-	cil2, err := AnalyzeAtRevision(a[1], a[2])
+	cil2, err := AnalyzeAtRevision(revisions[1], pkgname)
 	if err != nil {
 		log.Print(err)
 		os.Exit(2)

@@ -183,7 +183,7 @@ func main() {
 		log.Print(err)
 		os.Exit(2)
 	}
-	different := diffCapabilityInfoLists(cil1, cil2)
+	different := diffCapabilityInfoLists(cil1, cil2, revisions, pkgname)
 	if different {
 		os.Exit(1)
 	}
@@ -204,7 +204,13 @@ func populateMap(cil *cpb.CapabilityInfoList) capabilitiesMap {
 	return m
 }
 
-func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList) (different bool) {
+func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList, revisions [2]string, pkgname string) (different bool) {
+	fmt.Printf("Comparing capabilities in %q between revisions %q and %q\n\n",
+		pkgname, revisions[0], revisions[1])
+	if revisions[0] != "." && revisions[1] != "." {
+		fmt.Println("Commits between the two revisions:")
+		listCommits(revisions)
+	}
 	baselineMap := populateMap(baseline)
 	currentMap := populateMap(current)
 	var keys []mapKey
@@ -261,4 +267,21 @@ func printCallPath(prefix string, fns []*cpb.Function) {
 		fmt.Fprint(tw, "\t", f.GetName(), "\n")
 	}
 	tw.Flush()
+}
+
+func listCommits(revisions [2]string) {
+	var b bytes.Buffer
+	run(&b, "git", "log", "--no-decorate", "--oneline", "^"+revisions[0], revisions[1])
+	lines := strings.Split(b.String(), "\n")
+	if len(lines) <= 120 {
+		os.Stdout.Write(b.Bytes())
+		return
+	}
+	for i := 0; i < 50; i++ {
+		fmt.Println(lines[i])
+	}
+	fmt.Printf("(...%d commits omitted...)\n", len(lines)-100)
+	for i := -50; i < 0; i++ {
+		fmt.Println(lines[len(lines)+i])
+	}
 }

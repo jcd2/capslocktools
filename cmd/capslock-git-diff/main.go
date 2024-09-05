@@ -195,11 +195,25 @@ type mapKey struct {
 }
 type capabilitiesMap map[mapKey]*cpb.CapabilityInfo
 
-func populateMap(cil *cpb.CapabilityInfoList) capabilitiesMap {
+func populateMap(cil *cpb.CapabilityInfoList, granularity string) capabilitiesMap {
 	m := make(capabilitiesMap)
 	for _, ci := range cil.GetCapabilityInfo() {
-		mk := mapKey{capability: ci.GetCapability(), key: ci.GetPackageDir()}
-		m[mk] = ci
+		var key string
+		switch granularity {
+		case "package", "intermediate", "":
+			key = ci.GetPackageDir()
+		case "function":
+			if len(ci.Path) == 0 {
+				continue
+			}
+			key = ci.Path[0].GetName()
+		default:
+			panic("unknown granularity " + granularity)
+		}
+		if key == "" {
+			continue
+		}
+		m[mapKey{capability: ci.GetCapability(), key: key}] = ci
 	}
 	return m
 }
@@ -211,8 +225,14 @@ func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList, revision
 		fmt.Println("Commits between the two revisions:")
 		listCommits(revisions)
 	}
-	baselineMap := populateMap(baseline)
-	currentMap := populateMap(current)
+	granularityDescription := map[string]string{
+		"":             "Package",
+		"package":      "Package",
+		"intermediate": "Package",
+		"function":     "Function",
+	}[*granularity]
+	baselineMap := populateMap(baseline, *granularity)
+	currentMap := populateMap(current, *granularity)
 	var keys []mapKey
 	for k := range baselineMap {
 		keys = append(keys, k)
@@ -236,7 +256,7 @@ func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList, revision
 				fmt.Println()
 			}
 			different = true
-			fmt.Printf("> Package %s has capability %s:\n", key.key, key.capability)
+			fmt.Printf("> %s %s has capability %s:\n", granularityDescription, key.key, key.capability)
 			printCallPath("> ", ciCurrent.Path)
 		}
 		if inBaseline && !inCurrent {
@@ -244,7 +264,7 @@ func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList, revision
 				fmt.Println()
 			}
 			different = true
-			fmt.Printf("< Package %s has capability %s:\n", key.key, key.capability)
+			fmt.Printf("< %s %s has capability %s:\n", granularityDescription, key.key, key.capability)
 			printCallPath("< ", ciBaseline.Path)
 		}
 	}

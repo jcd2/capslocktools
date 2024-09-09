@@ -118,8 +118,8 @@ func AnalyzeAtRevision(rev, pkgname string) (cil *cpb.CapabilityInfoList, err er
 		return nil, fmt.Errorf("switching to temporary directory: %w", err)
 	}
 	vlog("switched to directory %q", tmpdir)
-	// Reset to the requested revision.
-	if err = run(nil, "git", "reset", "--hard", rev); err != nil {
+	// Checkout the revision.
+	if err = run(nil, "git", "checkout", rev, "--"); err != nil {
 		return nil, err
 	}
 	// Go to the same directory in the clone.

@@ -335,6 +335,15 @@ func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList, revision
 	// Output changes for each capability, in the order they were printed above.
 	for _, list := range [][]cpb.Capability{newlyUsedCapabilities, existingCapabilitiesWithNewUses} {
 		for _, c := range list {
+			switch *granularity {
+			case "package":
+				fmt.Printf("\nNew packages with capability %s:\n", c)
+			case "intermediate":
+				fmt.Printf("\nNew packages in call paths to capability %s:\n", c)
+			case "function":
+				fmt.Printf("\nNew functions with capability %s:\n", c)
+			}
+
 			for _, key := range keys {
 				if key.capability != c {
 					continue

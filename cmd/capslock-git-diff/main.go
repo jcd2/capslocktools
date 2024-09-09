@@ -219,6 +219,27 @@ func populateMap(cil *cpb.CapabilityInfoList, granularity string) capabilitiesMa
 	return m
 }
 
+func cover(pending map[string]bool, ci *cpb.CapabilityInfo) (covered []string) {
+	for _, p := range ci.Path {
+		var key string
+		switch *granularity {
+		case "package", "intermediate":
+			key = p.GetPackage()
+		case "function", "":
+			key = p.GetName()
+		}
+		if key == "" {
+			continue
+		}
+		if pending[key] {
+			covered = append(covered, key)
+			pending[key] = false
+		}
+	}
+	sort.Strings(covered)
+	return covered
+}
+
 func sortAndPrintCapabilities(cs []cpb.Capability) {
 	slices.Sort(cs)
 	tw := tabwriter.NewWriter(
@@ -344,31 +365,41 @@ func diffCapabilityInfoLists(baseline, current *cpb.CapabilityInfoList, revision
 				fmt.Printf("\nNew functions with capability %s:\n", c)
 			}
 
+			pending := make(map[string]bool)
 			for _, key := range keys {
 				if key.capability != c {
 					continue
 				}
-				ciBaseline, inBaseline := baselineMap[key]
-				ciCurrent, inCurrent := currentMap[key]
+				_, inBaseline := baselineMap[key]
+				_, inCurrent := currentMap[key]
 				if !inBaseline && inCurrent {
-					fmt.Println()
+					pending[key.key] = true
 					different = true
-					fmt.Printf("> %s %s has capability %s:\n", granularityDescription, key.key, key.capability)
-					printCallPath("> ", ciCurrent.Path)
 				}
-				if inBaseline && !inCurrent {
-					fmt.Println()
-					different = true
-					fmt.Printf("< %s %s has capability %s:\n", granularityDescription, key.key, key.capability)
-					printCallPath("< ", ciBaseline.Path)
+			}
+			for _, key := range keys {
+				if key.capability != c {
+					continue
 				}
+				if !pending[key.key] {
+					// already done
+					continue
+				}
+				ci := currentMap[key]
+				if keys := cover(pending, ci); len(keys) > 1 {
+					// This call path can be the example for multiple keys.
+					fmt.Printf("\n%ss %s have capability %s:\n", granularityDescription, strings.Join(keys, ", "), key.capability)
+				} else {
+					fmt.Printf("\n%s %s has capability %s:\n", granularityDescription, key.key, key.capability)
+				}
+				printCallPath(ci.Path)
 			}
 		}
 	}
 	return different
 }
 
-func printCallPath(prefix string, fns []*cpb.Function) {
+func printCallPath(fns []*cpb.Function) {
 	tw := tabwriter.NewWriter(
 		os.Stdout, // output
 		10,        // minwidth
@@ -377,7 +408,6 @@ func printCallPath(prefix string, fns []*cpb.Function) {
 		' ',       // padchar
 		0)         // flags
 	for _, f := range fns {
-		tw.Write([]byte(prefix))
 		if f.Site != nil {
 			fmt.Fprint(tw, f.Site.GetFilename(), ":", f.Site.GetLine(), ":", f.Site.GetColumn())
 		}

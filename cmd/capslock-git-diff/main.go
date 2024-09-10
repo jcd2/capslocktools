@@ -47,8 +47,8 @@ import (
 
 var (
 	verbose          = flag.Bool("v", false, "enable verbose logging")
-	granularity      = flag.String("granularity", "", "the granularity to use for comparisons")
-	flagCapabilities = flag.String("capabilities", "", "if non-empty, a comma-separated list of capabilities to pass to capslock")
+	granularity      = flag.String("granularity", "intermediate", "the granularity to use for comparisons")
+	flagCapabilities = flag.String("capabilities", "-UNANALYZED,-REFLECT,-UNSAFE_POINTER", "if non-empty, a comma-separated list of capabilities to pass to capslock")
 )
 
 func vlog(format string, a ...any) {

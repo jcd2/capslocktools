@@ -4,7 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-// Compares packages at two revisions of a git repository.
+// capslock-git-diff lists package capabilities that were added between
+// two revisions of a git repository.
 //
 // Usage example:
 //
@@ -161,7 +162,19 @@ func callCapslock(rev, pkgname string) (cil *cpb.CapabilityInfoList, err error) 
 	return cil, nil
 }
 
+func usage() {
+	fmt.Fprintf(os.Stderr,
+		`capslock-git-diff lists package capabilities that were added between
+two revisions of a git repository.
+
+Usage: capslock-git-diff <revision1> <revision2> [<package>]
+`)
+	flag.PrintDefaults()
+	os.Exit(2)
+}
+
 func main() {
+	flag.Usage = usage
 	flag.Parse()
 	a := flag.Args()
 	var pkgname string
@@ -171,7 +184,8 @@ func main() {
 	} else if len(a) == 3 {
 		pkgname = a[2]
 	} else {
-		panic(fmt.Sprintf("wrong number of arguments: %q", a))
+		fmt.Fprintf(os.Stderr, "wrong number of arguments: %q\n\n", a)
+		usage()
 	}
 	revisions := [2]string{a[0], a[1]}
 	cil1, err := AnalyzeAtRevision(revisions[0], pkgname)
